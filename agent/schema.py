@@ -23,8 +23,13 @@ class CompanyIntel(BaseModel):
     company_overview: str = Field(
         description="A concise 2-sentence summary of what the company does"
     )
-    target_audience: str = Field(
-        description="Who the product/service is built for, e.g. 'developers building backend apps'"
+    target_audience: List[str] = Field(
+        default_factory=list,
+        description=(
+            "A concise list of 3-6 genuine ICP/customer groups (roles, teams, or "
+            "organization types). Combine close categories; exclude keyword dumps, "
+            "use cases, and standalone industries unless explicitly customer groups."
+        ),
     )
     contact_points: List[str] = Field(
         default_factory=list,

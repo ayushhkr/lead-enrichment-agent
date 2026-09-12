@@ -17,7 +17,7 @@ from agent.crawler import PageResult
 # Tags that carry no useful extraction signal for this use case.
 STRIP_TAGS = ["script", "style", "svg", "noscript", "iframe", "link", "meta", "form", "button"]
 # Common boilerplate containers worth dropping when present.
-STRIP_SELECTORS = ["nav", "footer", "[role='navigation']", "[aria-hidden='true']"]
+STRIP_SELECTORS = ["nav", "[role='navigation']", ".cookie", "[class*='cookie-banner']", "[role='dialog']"]
 
 
 def html_to_clean_text(html: str, max_chars: int = None) -> str:
@@ -31,6 +31,13 @@ def html_to_clean_text(html: str, max_chars: int = None) -> str:
     for selector in STRIP_SELECTORS:
         for tag in soup.select(selector):
             tag.decompose()
+
+    # Keep link destinations that can carry contact or professional-profile data.
+    for anchor in soup.find_all("a", href=True):
+        href = anchor["href"].strip()
+        label = anchor.get_text(" ", strip=True)
+        if href.startswith("mailto:") or "linkedin.com" in href.lower():
+            anchor.replace_with(f"{label} {href}".strip())
 
     text = soup.get_text(separator="\n")
 

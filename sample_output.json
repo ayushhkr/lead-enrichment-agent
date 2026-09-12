@@ -1,0 +1,36 @@
+[
+  {
+    "domain": "postman.com",
+    "company_overview": "Postman is an API platform that simplifies the entire API lifecycle, from development and testing to management and distribution. It provides tools for engineers and enterprises to build, collaborate on, and govern APIs efficiently.",
+    "target_audience": ["Engineers", "Developers", "Enterprises", "API Teams"],
+    "contact_points": ["info@postman.com", "info-jp@postman.com", "help@postman.com", "accommodations@postman.com"],
+    "key_team_members": [
+      {"name": "Abhinav Asthana", "title": "CEO and Co-Founder", "linkedin_url": null},
+      {"name": "Ankit Sobti", "title": "Co-Founder", "linkedin_url": null},
+      {"name": "Abhijit Kane", "title": "Co-Founder", "linkedin_url": null}
+    ],
+    "data_confidence_score": 0.8,
+    "sources_used": ["https://postman.com", "https://www.postman.com/company/about-postman/", "https://www.postman.com/company/careers/", "https://www.postman.com/company/contact-sales/", "https://www.postman.com/company/contact-us/", "https://www.postman.com/company/press-media/", "https://www.postman.com/postman-enterprise/", "https://www.postman.com/pricing/"]
+  },
+  {
+    "domain": "supabase.com",
+    "company_overview": "Supabase is an open-source backend platform that delivers a fully-managed PostgreSQL database coupled with built-in authentication, real-time APIs, storage, edge functions and vector embeddings, allowing developers to rapidly build and scale applications.",
+    "target_audience": ["Developers", "Startups", "Agencies", "Enterprises", "FinTech", "Healthcare", "AI builders", "No-code builders", "Beginners", "Innovation teams"],
+    "contact_points": ["legal@supabase.com", "privacy@supabase.com", "abuse@supabase.com", "security@supabase.com", "help-events@supabase.com"],
+    "key_team_members": [],
+    "data_confidence_score": 0.6,
+    "sources_used": ["https://supabase.com", "https://supabase.com/company", "https://supabase.com/contact-us", "https://supabase.com/contact/sales", "https://supabase.com/solutions/innovation-teams", "https://supabase.com/customers", "https://supabase.com/customers/chatbase", "https://supabase.com/customers/exprealty"]
+  },
+  {
+    "domain": "vapi.ai",
+    "company_overview": "Vapi provides a unified platform that enables builders to create, deploy, and manage advanced voice AI agents. The platform offers orchestration, real-time monitoring, and enterprise-grade configurability for scalable voice solutions.",
+    "target_audience": ["Small businesses", "Global enterprises"],
+    "contact_points": [],
+    "key_team_members": [
+      {"name": "Jason Mitura", "title": "VP of Software Development", "linkedin_url": null},
+      {"name": "Jayson Noland", "title": "CFO", "linkedin_url": null}
+    ],
+    "data_confidence_score": 0.6,
+    "sources_used": ["https://vapi.ai", "https://vapi.ai/sales", "https://vapi.ai/customers", "https://vapi.ai/partnerships", "https://vapi.ai/pricing", "https://vapi.ai/blog", "https://vapi.ai/careers"]
+  }
+]

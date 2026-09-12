@@ -94,7 +94,7 @@ def process_domain(domain: str, cost_tracker: CostTracker) -> CompanyIntel:
     return CompanyIntel(
         domain=domain,
         company_overview="",
-        target_audience="",
+        target_audience=[],
         contact_points=[],
         key_team_members=[],
         data_confidence_score=0.0,
@@ -125,7 +125,7 @@ def write_outputs(results: List[CompanyIntel], cost_tracker: CostTracker) -> Non
             writer.writerow([
                 r.domain,
                 r.company_overview,
-                r.target_audience,
+                "; ".join(r.target_audience),
                 "; ".join(r.contact_points),
                 "; ".join(f"{m.name} ({m.title or 'n/a'}) {m.linkedin_url or ''}".strip()
                           for m in r.key_team_members),

@@ -71,10 +71,10 @@ Output is written to:
 | Requirement | Where |
 |---|---|
 | Headless browser automation, JS rendering | `agent/crawler.py` (Playwright, `domcontentloaded` wait) |
-| Subpage discovery (`/about`, `/team`, `/contact`, `/pricing`...) | `Settings.subpages` in `agent/config.py` |
-| No raw HTML to the LLM | `agent/cleaner.py` strips script/style/svg/nav, truncates per token budget |
+| Subpage discovery | `agent/crawler.py` ranks rendered homepage links; configured paths are a sparse-discovery fallback |
+| No raw HTML to the LLM | `agent/cleaner.py` strips noise while retaining footer contact/LinkedIn data, then truncates text |
 | Structured output (Pydantic + tool calling) | `agent/schema.py` + `agent/extractor.py` |
-| Confidence score | `CompanyIntel.data_confidence_score`, model-estimated per domain |
+| Confidence score | `CompanyIntel.data_confidence_score`, deterministic completeness across five extracted evidence types |
 | Graceful fallback (404s, timeouts, bot blocks) | `PageResult.status` in crawler + per-domain retry loop in `main.py` |
 | Cost tracking (bonus) | `CostTracker` in `agent/extractor.py` → `output/cost_report.json` |
 

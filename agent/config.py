@@ -20,7 +20,7 @@ class Settings:
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
     groq_api_key: str = os.getenv("GROQ_API_KEY", "")
 
-    anthropic_model: str = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-5")
+    anthropic_model: str = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-5-20250929")
     openai_model: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     groq_model: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
@@ -29,6 +29,8 @@ class Settings:
         "", "/about", "/about-us", "/company", "/team", "/leadership",
         "/contact", "/contact-us", "/pricing",
     ])
+    max_relevant_pages: int = int(os.getenv("MAX_RELEVANT_PAGES", "8"))
+    min_discovered_pages: int = int(os.getenv("MIN_DISCOVERED_PAGES", "3"))
     page_timeout_ms: int = int(os.getenv("PAGE_TIMEOUT_MS", "15000"))
     nav_wait_until: str = os.getenv("NAV_WAIT_UNTIL", "domcontentloaded")
     max_chars_per_page: int = int(os.getenv("MAX_CHARS_PER_PAGE", "6000"))
