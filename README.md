@@ -1,105 +1,185 @@
 # Autonomous Lead Enrichment Agent
 
-An AI-powered lead enrichment agent that takes company domains as input, autonomously discovers relevant pages from their public websites, extracts useful company intelligence, and produces validated structured output.
+An AI agent that takes a list of company domains, browses their public websites, and returns validated, structured company intelligence as JSON and CSV.
 
-Built as a take-home assignment for the **AI Engineer Intern** role at SoftwareBrio.
+Give it `postman.com`; get back what the company does, who it sells to, who leads it, how to contact it, and a confidence score for how complete the data is.
+
+
+---
+<img width="996" height="736" alt="image" src="https://github.com/user-attachments/assets/98536a00-168f-42f8-a7ad-53e74ac9cf37" />
+
+## What it produces
+
+For each domain, the agent extracts:
+
+- **Company summary**: what the company does
+- **Target audience / ICP**: who the product is for
+- **Leadership and team members**: names, titles, and LinkedIn URLs when available (deduplicated)
+- **Public contact points**: emails, phone numbers, contact pages
+- **Data-confidence score**: a deterministic score based on how many fields were found
+- **Run metadata**: tokens used and estimated API cost
+
+See [`sample_output.json`](sample_output.json) for a real example.
+
+```json
+```
+
+
+## How it works
+
+Instead of crawling an entire site or hardcoding URLs like `/about`, the agent decides where to look based on what each site actually links to.
+
+```
+             Company Domain
+                   │
+                   ▼
+          ┌─────────────────┐
+          │    Playwright   │
+          │     Crawler     │
+          └────────┬────────┘
+                   │
+                   ▼
+             Load Homepage
+                   │
+                   ▼
+         Discover Internal Links
+                   │
+                   ▼
+          Rank Relevant Links
+                   │
+                   ▼
+       Select Bounded Page Set
+                   │
+                   ▼
+         Crawl Relevant Pages
+                   │
+                   ▼
+           Clean Page Content
+                   │
+                   ▼
+          Build LLM Context
+                   │
+                   ▼
+          ┌─────────────────┐
+          │       LLM       │
+          │ Groq / Provider │
+          └────────┬────────┘
+                   │
+      ┌────────────┴────────────┐
+      │                         │
+Tool-call success        Tool-call failure
+      │                         │
+      │                    JSON fallback
+      │                         │
+      └────────────┬────────────┘
+                   ▼
+          Pydantic Validation
+                   │
+                   ▼
+        Data Confidence Scoring
+                   │
+                   ▼
+          JSON / CSV Output
+```
+
+1. **Discover**: load the homepage in a real browser (Playwright, so JavaScript-rendered sites work) and collect internal links.
+2. **Rank**: score links by relevance to company enrichment (about, team, contact, product pages, etc.).
+3. **Crawl**: visit only a bounded number of the top-ranked pages.
+4. **Clean**: strip scripts, navigation, and boilerplate so the LLM sees signal, not markup.
+5. **Extract**: send the cleaned context to the LLM to extract structured fields.
+6. **Validate**: enforce the output schema with Pydantic.
+7. **Score**: compute a deterministic confidence score from the validated result.
+8. **Export**: write JSON and CSV.
 
 ---
 
-## Overview
+## Design decisions
 
-The agent accepts a list of company domains and uses **Playwright** to browse their websites dynamically.
-
-Instead of crawling an entire website or relying only on hardcoded URLs, the agent:
-
-1. Opens the company homepage.
-2. Discovers internal links from the rendered page.
-3. Ranks links based on their relevance to company enrichment.
-4. Crawls a bounded number of relevant pages.
-5. Cleans and reduces the extracted webpage content.
-6. Sends the relevant context to an LLM.
-7. Extracts structured company intelligence.
-8. Validates the result using Pydantic.
-9. Calculates a deterministic data-confidence score.
-10. Produces JSON and CSV output.
-
-The system is designed to continue operating when individual pages, API requests, or LLM tool calls fail.
+- **Bounded crawling.** Each domain has a page limit, which keeps cost, latency, and token usage predictable.
+- **Link ranking over hardcoded paths.** Sites structure themselves differently. Ranking discovered links works on sites where `/about` doesn't exist.
+- **Content cleaning before the LLM.** Sending less, cleaner text lowers token cost and reduces hallucination risk.
+- **Schema validation with Pydantic.** LLM output is untrusted input. Invalid or malformed results are caught instead of silently written to the output.
+- **Deterministic confidence score.** The score is computed from the validated data (which fields were found), not self-reported by the LLM, so it is reproducible and can't be inflated by the model.
+- **JSON fallback for tool-call failures.** If structured tool-calling fails, the agent falls back to plain JSON extraction instead of dropping the domain.
+- **Failure isolation.** A failed page, API call, or domain doesn't stop the batch. Transient errors are retried with backoff.
+- **Cost tracking.** Token usage and estimated API cost are recorded per run.
 
 ---
 
-## Features
+## Quick start
 
-- Dynamic homepage link discovery
-- Relevance-based internal link ranking
-- Bounded website crawling
-- JavaScript-rendered page support through Playwright
-- HTML/content cleaning before LLM processing
-- LLM-based company intelligence extraction
-- Pydantic schema validation
-- Target audience / ICP extraction
-- Public contact-point extraction
-- Leadership and team-member extraction
-- LinkedIn URL extraction when available
-- Duplicate team-member handling
-- Deterministic data-confidence scoring
-- Retry and backoff handling for transient failures
-- JSON fallback for LLM tool-call failures
-- JSON and CSV output
-- Token and estimated API-cost tracking
-- Per-domain failure isolation
+**Requirements:** Python 3.10+ and an LLM API key.
+
+```bash
+git clone https://github.com/ayushhkr/lead-enrichment-agent.git
+cd lead-enrichment-agent
+
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+
+pip install -r requirements.txt
+playwright install chromium
+```
+
+Configure your API key:
+
+```bash
+cp .env.example .env
+# then edit .env and add your key
+```
+
+Add the domains you want to enrich to `domains.txt`, one per line:
+
+```
+example.com
+another-company.io
+```
+
+Run:
+
+```bash
+python main.py
+```
+
+Results are written as JSON and CSV. 
 
 ---
 
-## Architecture
+## Project structure
 
-```text
-                    Company Domain
-                          │
-                          ▼
-                 ┌─────────────────┐
-                 │    Playwright   │
-                 │     Crawler     │
-                 └────────┬────────┘
-                          │
-                          ▼
-                    Load Homepage
-                          │
-                          ▼
-                Discover Internal Links
-                          │
-                          ▼
-                 Rank Relevant Links
-                          │
-                          ▼
-              Select Bounded Page Set
-                          │
-                          ▼
-                Crawl Relevant Pages
-                          │
-                          ▼
-                  Clean Page Content
-                          │
-                          ▼
-                 Build LLM Context
-                          │
-                          ▼
-                 ┌─────────────────┐
-                 │       LLM       │
-                 │ Groq / Provider │
-                 └────────┬────────┘
-                          │
-             ┌────────────┴────────────┐
-             │                         │
-       Tool-call success        Tool-call failure
-             │                         │
-             │                    JSON fallback
-             │                         │
-             └────────────┬────────────┘
-                          ▼
-                 Pydantic Validation
-                          │
-                          ▼
-               Data Confidence Scoring
-                          │
-                          ▼
-                 JSON / CSV Output
+```
+lead-enrichment-agent/
+├── agent/               # crawling, link ranking, LLM extraction, validation, scoring
+├── main.py              # entry point: reads domains.txt, runs the pipeline, writes output
+├── domains.txt          # input list of company domains
+├── sample_output.json   # example output
+├── requirements.txt
+└── .env.example         # environment variable template
+```
+
+<!-- TODO: list the main files inside agent/ with one line each -->
+
+---
+
+## Limitations
+
+- Works on public pages only; information not published on a company's site won't be found.
+- Extraction quality depends on the LLM and on how much useful content the bounded page set contains. That is what the confidence score is meant to reflect.
+- Sites with aggressive bot protection or login walls may return little or no content.
+- Please use responsibly and respect each site's terms of service.
+
+---
+
+## Roadmap
+
+- Evaluation set: measure extraction accuracy against hand-labeled domains
+- Unit tests for link ranking, content cleaning, and confidence scoring
+- Concurrent crawling across domains
+- Support for additional LLM providers
+- Optional CRM export (CSV is supported today)
+
+---
+
+## Tech stack
+
+Python · Playwright · Pydantic · LLM API (Groq or compatible provider)
