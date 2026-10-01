@@ -47,7 +47,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Autonomous Lead Enrichment Agent")
     parser.add_argument("domains", nargs="*", help="Company domains, e.g. postman.com")
     parser.add_argument("--domains-file", type=str, default=None,
-                         help="Path to a text file with one domain per line")
+                        help="Path to a text file with one domain per line")
     return parser.parse_args()
 
 
@@ -90,7 +90,7 @@ def process_domain(domain: str, cost_tracker: CostTracker) -> CompanyIntel:
                 time.sleep(settings.retry_backoff_seconds * attempt)
 
     logger.error("[%s] All attempts failed. Recording empty/low-confidence result. Last error: %s",
-                 domain, last_error)
+                domain, last_error)
     return CompanyIntel(
         domain=domain,
         company_overview="",
@@ -128,7 +128,7 @@ def write_outputs(results: List[CompanyIntel], cost_tracker: CostTracker) -> Non
                 "; ".join(r.target_audience),
                 "; ".join(r.contact_points),
                 "; ".join(f"{m.name} ({m.title or 'n/a'}) {m.linkedin_url or ''}".strip()
-                          for m in r.key_team_members),
+                        for m in r.key_team_members),
                 r.data_confidence_score,
                 "; ".join(r.sources_used),
             ])
