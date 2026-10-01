@@ -1,102 +1,185 @@
 # Autonomous Lead Enrichment Agent
 
-A Python pipeline that takes company domains as input, crawls their public
-web presence with a headless browser, cleans the content down to
-LLM-friendly text, and extracts structured company intelligence (overview,
-ICP, contacts, leadership, confidence score) using strict LLM tool calling.
+An AI agent that takes a list of company domains, browses their public websites, and returns validated, structured company intelligence as JSON and CSV.
 
-## Architecture
+Give it `postman.com`; get back what the company does, who it sells to, who leads it, how to contact it, and a confidence score for how complete the data is.
+
+
+---
+<img width="996" height="736" alt="image" src="https://github.com/user-attachments/assets/98536a00-168f-42f8-a7ad-53e74ac9cf37" />
+
+## What it produces
+
+For each domain, the agent extracts:
+
+- **Company summary**: what the company does
+- **Target audience / ICP**: who the product is for
+- **Leadership and team members**: names, titles, and LinkedIn URLs when available (deduplicated)
+- **Public contact points**: emails, phone numbers, contact pages
+- **Data-confidence score**: a deterministic score based on how many fields were found
+- **Run metadata**: tokens used and estimated API cost
+
+See [`sample_output.json`](sample_output.json) for a real example.
+
+```json
+```
+
+
+## How it works
+
+Instead of crawling an entire site or hardcoding URLs like `/about`, the agent decides where to look based on what each site actually links to.
 
 ```
-main.py                # CLI entry point / orchestrator
-agent/
-  config.py             # env-driven settings
-  crawler.py            # Step 1: Playwright-based crawling
-  cleaner.py             # Step 2: HTML -> clean, token-bounded text
-  schema.py               # Pydantic output contract
-  extractor.py             # Step 3: LLM structured extraction (+ cost tracking)
-domains.txt                # sample input (the 3 test domains)
-output/                      # generated output.json / output.csv (gitignored)
+             Company Domain
+                   │
+                   ▼
+          ┌─────────────────┐
+          │    Playwright   │
+          │     Crawler     │
+          └────────┬────────┘
+                   │
+                   ▼
+             Load Homepage
+                   │
+                   ▼
+         Discover Internal Links
+                   │
+                   ▼
+          Rank Relevant Links
+                   │
+                   ▼
+       Select Bounded Page Set
+                   │
+                   ▼
+         Crawl Relevant Pages
+                   │
+                   ▼
+           Clean Page Content
+                   │
+                   ▼
+          Build LLM Context
+                   │
+                   ▼
+          ┌─────────────────┐
+          │       LLM       │
+          │ Groq / Provider │
+          └────────┬────────┘
+                   │
+      ┌────────────┴────────────┐
+      │                         │
+Tool-call success        Tool-call failure
+      │                         │
+      │                    JSON fallback
+      │                         │
+      └────────────┬────────────┘
+                   ▼
+          Pydantic Validation
+                   │
+                   ▼
+        Data Confidence Scoring
+                   │
+                   ▼
+          JSON / CSV Output
 ```
 
-Each domain runs through: `crawl_domain()` -> `build_context_for_llm()` ->
-`extract_company_intel()`, all inside a per-domain try/except with retries,
-so a single broken site (404, bot block, timeout) can never crash the batch
-(Step 4 of the assignment).
+1. **Discover**: load the homepage in a real browser (Playwright, so JavaScript-rendered sites work) and collect internal links.
+2. **Rank**: score links by relevance to company enrichment (about, team, contact, product pages, etc.).
+3. **Crawl**: visit only a bounded number of the top-ranked pages.
+4. **Clean**: strip scripts, navigation, and boilerplate so the LLM sees signal, not markup.
+5. **Extract**: send the cleaned context to the LLM to extract structured fields.
+6. **Validate**: enforce the output schema with Pydantic.
+7. **Score**: compute a deterministic confidence score from the validated result.
+8. **Export**: write JSON and CSV.
 
-## Setup
+---
 
-1. **Clone and create a virtual environment**
-   ```bash
-   git clone <this-repo>
-   cd lead-enrichment-agent
-   python -m venv .venv
-   source .venv/bin/activate   # Windows: .venv\Scripts\activate
-   ```
+## Design decisions
 
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   playwright install chromium   # downloads the headless browser binary
-   ```
+- **Bounded crawling.** Each domain has a page limit, which keeps cost, latency, and token usage predictable.
+- **Link ranking over hardcoded paths.** Sites structure themselves differently. Ranking discovered links works on sites where `/about` doesn't exist.
+- **Content cleaning before the LLM.** Sending less, cleaner text lowers token cost and reduces hallucination risk.
+- **Schema validation with Pydantic.** LLM output is untrusted input. Invalid or malformed results are caught instead of silently written to the output.
+- **Deterministic confidence score.** The score is computed from the validated data (which fields were found), not self-reported by the LLM, so it is reproducible and can't be inflated by the model.
+- **JSON fallback for tool-call failures.** If structured tool-calling fails, the agent falls back to plain JSON extraction instead of dropping the domain.
+- **Failure isolation.** A failed page, API call, or domain doesn't stop the batch. Transient errors are retried with backoff.
+- **Cost tracking.** Token usage and estimated API cost are recorded per run.
 
-3. **Configure environment variables**
-   ```bash
-   cp .env.example .env
-   ```
-   Open `.env` and set:
-   - `LLM_PROVIDER` — `anthropic`, `openai`, or `groq`
-   - The matching API key (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `GROQ_API_KEY`)
+---
 
-## Running it
+## Quick start
+
+**Requirements:** Python 3.10+ and an LLM API key.
 
 ```bash
-# Run on the 3 assignment test domains (default if no args given)
-python main.py
+git clone https://github.com/ayushhkr/lead-enrichment-agent.git
+cd lead-enrichment-agent
 
-# Or explicitly
-python main.py postman.com supabase.com vapi.ai
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
 
-# Or from a file, one domain per line
-python main.py --domains-file domains.txt
+pip install -r requirements.txt
+playwright install chromium
 ```
 
-Output is written to:
-- `output/output.json` — full structured results
-- `output/output.csv` — flattened, spreadsheet-friendly version
-- `output/cost_report.json` — per-domain token usage and estimated USD cost
+Configure your API key:
 
-## How each requirement is met
+```bash
+cp .env.example .env
+# then edit .env and add your key
+```
 
-| Requirement | Where |
-|---|---|
-| Headless browser automation, JS rendering | `agent/crawler.py` (Playwright, `domcontentloaded` wait) |
-| Subpage discovery | `agent/crawler.py` ranks rendered homepage links; configured paths are a sparse-discovery fallback |
-| No raw HTML to the LLM | `agent/cleaner.py` strips noise while retaining footer contact/LinkedIn data, then truncates text |
-| Structured output (Pydantic + tool calling) | `agent/schema.py` + `agent/extractor.py` |
-| Confidence score | `CompanyIntel.data_confidence_score`, deterministic completeness across five extracted evidence types |
-| Graceful fallback (404s, timeouts, bot blocks) | `PageResult.status` in crawler + per-domain retry loop in `main.py` |
-| Cost tracking (bonus) | `CostTracker` in `agent/extractor.py` → `output/cost_report.json` |
+Add the domains you want to enrich to `domains.txt`, one per line:
 
-## Notes / design choices
+```
+example.com
+another-company.io
+```
 
-- **Provider-agnostic extraction**: the same Pydantic schema is enforced via
-  Anthropic tool calling or OpenAI/Groq function calling, so the grader can
-  run this with whichever API key they have.
-- **Token budget**: `MAX_CHARS_PER_PAGE` and `MAX_CHARS_TOTAL` (in `.env`)
-  cap how much text reaches the LLM per page and per domain, keeping cost
-  and latency predictable even on content-heavy sites.
-- **Retries**: each domain gets `MAX_RETRIES` extra attempts with linear
-  backoff before it's recorded as a zero-confidence result — the run itself
-  never halts.
+Run:
 
-## Known limitations / next steps
+```bash
+python main.py
+```
 
-- LinkedIn URLs for leadership are only pulled from what's linked directly
-  on the company's own site. Wiring up a search API (SerpAPI/Tavily) as
-  described in the assignment's bonus section would let the agent look up
-  founders whose LinkedIn isn't linked from the site itself.
-- Sites requiring login or aggressive bot-detection (Cloudflare challenge
-  pages, etc.) will return an `error`/`timeout` status for that page rather
-  than being bypassed — by design, this project doesn't attempt to defeat
-  bot protections.
+Results are written as JSON and CSV. 
+
+---
+
+## Project structure
+
+```
+lead-enrichment-agent/
+├── agent/               # crawling, link ranking, LLM extraction, validation, scoring
+├── main.py              # entry point: reads domains.txt, runs the pipeline, writes output
+├── domains.txt          # input list of company domains
+├── sample_output.json   # example output
+├── requirements.txt
+└── .env.example         # environment variable template
+```
+
+<!-- TODO: list the main files inside agent/ with one line each -->
+
+---
+
+## Limitations
+
+- Works on public pages only; information not published on a company's site won't be found.
+- Extraction quality depends on the LLM and on how much useful content the bounded page set contains. That is what the confidence score is meant to reflect.
+- Sites with aggressive bot protection or login walls may return little or no content.
+- Please use responsibly and respect each site's terms of service.
+
+---
+
+## Roadmap
+
+- Evaluation set: measure extraction accuracy against hand-labeled domains
+- Unit tests for link ranking, content cleaning, and confidence scoring
+- Concurrent crawling across domains
+- Support for additional LLM providers
+- Optional CRM export (CSV is supported today)
+
+---
+
+## Tech stack
+
+Python · Playwright · Pydantic · LLM API (Groq or compatible provider)
