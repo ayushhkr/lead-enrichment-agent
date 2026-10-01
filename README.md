@@ -180,6 +180,12 @@ lead-enrichment-agent/
 
 ---
 
+## Error Handling
+
+The lead enrichment pipeline handles failures from external services gracefully.
+API errors, missing lead information, and incomplete enrichment results should
+be reported clearly without stopping the processing of other leads.
+
 ## Tech stack
 
 Python · Playwright · Pydantic · LLM API (Groq or compatible provider)
