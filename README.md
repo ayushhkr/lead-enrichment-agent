@@ -184,6 +184,7 @@ lead-enrichment-agent/
 
 The agent generates structured lead enrichment results and exports the
 processed data for further analysis or downstream workflows.
+The agent returns structured lead enrichment data in JSON and CSV formats.
 
 ## Error Handling
 
