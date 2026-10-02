@@ -180,6 +180,11 @@ lead-enrichment-agent/
 
 ---
 
+## Output
+
+The agent generates structured lead enrichment results and exports the
+processed data for further analysis or downstream workflows.
+
 ## Error Handling
 
 The lead enrichment pipeline handles failures from external services gracefully.
